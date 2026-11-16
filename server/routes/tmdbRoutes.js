@@ -86,5 +86,26 @@ router.get("/upcoming", async (req, res) => {
     });
   }
 });
+// SEARCH MOVIES
+router.get("/search", async (req, res) => {
+  try {
+    const query = req.query.query;
 
+    if (!query) {
+      return res.json([]);
+    }
+
+    const data = await fetchTMDB(
+      `/search/movie?query=${encodeURIComponent(query)}`
+    );
+
+    res.json(data.results);
+  } catch (error) {
+    console.error("Movie search error:", error.message);
+
+    res.status(500).json({
+      message: "Could not search movies",
+    });
+  }
+});
 module.exports = router;
