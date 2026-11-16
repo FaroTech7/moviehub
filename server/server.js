@@ -6,7 +6,7 @@ require("dotenv").config();
 const authRoutes = require("./routes/authRoutes");
 const watchlistRoutes = require("./routes/watchlistRoutes");
 const movieRoutes = require("./routes/movieRoutes");
-
+const tmdbRoutes = require("./routes/tmdbRoutes");
 const app = express();
 
 // MIDDLEWARE
@@ -24,7 +24,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/watchlist", watchlistRoutes);
 app.use("/api/movies", movieRoutes);
-
+app.use("/api/tmdb", tmdbRoutes);
 // 404 HANDLER
 app.use((req, res) => {
   res.status(404).json({
