@@ -31,6 +31,11 @@ const movieSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+
+    overview: {
+      type: String,
+      default: "",
+    },
   },
   {
     _id: false,

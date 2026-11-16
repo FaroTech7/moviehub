@@ -1,3 +1,4 @@
+
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const Watchlist = require("../models/Watchlist");
@@ -23,7 +24,6 @@ function authenticateToken(req, res, next) {
     );
 
     req.userId = decoded.id;
-
     next();
   } catch (error) {
     return res.status(401).json({
@@ -42,7 +42,6 @@ router.get("/", authenticateToken, async (req, res) => {
     res.status(200).json({
       movies: watchlist ? watchlist.movies : [],
     });
-
   } catch (error) {
     console.error("Get watchlist error:", error.message);
 
@@ -63,12 +62,14 @@ router.put("/", authenticateToken, async (req, res) => {
       });
     }
 
-    // VALIDATE MOVIE DATA
+    // ACCEPT BOTH STRING AND NUMBER IDS
     const validMovies = movies.every((movie) => {
       return (
         movie &&
-        typeof movie.id === "string" &&
-        movie.id.trim() !== "" &&
+        (typeof movie.id === "string" ||
+          (typeof movie.id === "number" &&
+            Number.isFinite(movie.id))) &&
+        String(movie.id).trim() !== "" &&
         typeof movie.title === "string" &&
         movie.title.trim() !== ""
       );
@@ -80,12 +81,17 @@ router.put("/", authenticateToken, async (req, res) => {
       });
     }
 
-    // SAVE USER WATCHLIST
+    // NORMALIZE IDS TO STRINGS
+    const normalizedMovies = movies.map((movie) => ({
+      ...movie,
+      id: String(movie.id),
+    }));
+
     const watchlist = await Watchlist.findOneAndUpdate(
       { user: req.userId },
       {
         user: req.userId,
-        movies,
+        movies: normalizedMovies,
       },
       {
         returnDocument: "after",
@@ -98,7 +104,6 @@ router.put("/", authenticateToken, async (req, res) => {
       message: "Watchlist saved successfully",
       movies: watchlist.movies,
     });
-
   } catch (error) {
     console.error("Save watchlist error:", error.message);
 
