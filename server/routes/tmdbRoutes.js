@@ -108,4 +108,22 @@ router.get("/search", async (req, res) => {
     });
   }
 });
+// MOVIES BY GENRE
+router.get("/genre/:id", async (req, res) => {
+  try {
+    const genreId = req.params.id;
+
+    const data = await fetchTMDB(
+      `/discover/movie?with_genres=${encodeURIComponent(genreId)}`
+    );
+
+    res.json(data.results);
+  } catch (error) {
+    console.error("Genre movies error:", error.message);
+
+    res.status(500).json({
+      message: "Could not fetch genre movies",
+    });
+  }
+});
 module.exports = router;
