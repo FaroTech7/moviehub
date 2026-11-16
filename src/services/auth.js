@@ -1,5 +1,5 @@
 
-const API_URL = "http://localhost:5000/api/auth";
+const API_URL = "https://moviehub-1ke6.onrender.com/api/auth";
 
 export async function signupUser(userData) {
   const response = await fetch(`${API_URL}/signup`, {

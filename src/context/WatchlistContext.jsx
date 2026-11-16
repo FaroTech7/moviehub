@@ -9,7 +9,7 @@ import { useAuth } from "./AuthContext";
 
 const WatchlistContext = createContext();
 
-const API_URL = "http://localhost:5000/api/watchlist";
+const API_URL = "https://moviehub-1ke6.onrender.com/api/watchlist";
 
 export function WatchlistProvider({ children }) {
   const { user } = useAuth();

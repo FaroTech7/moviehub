@@ -21,7 +21,7 @@ function MovieDetails() {
     const fetchMovie = async () => {
       try {
         const response = await fetch(
-          `http://localhost:5000/api/movies/${id}`
+          `https://moviehub-1ke6.onrender.com/api/movies/${id}`
         );
 
         const data = await response.json();
