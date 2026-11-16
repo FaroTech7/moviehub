@@ -126,4 +126,73 @@ router.get("/genre/:id", async (req, res) => {
     });
   }
 });
+
+// FULL MOVIE DETAILS
+router.get("/movie/:id", async (req, res) => {
+  try {
+    const data = await fetchTMDB(
+      `/movie/${encodeURIComponent(req.params.id)}`
+    );
+
+    res.json(data);
+  } catch (error) {
+    console.error("Movie details error:", error.message);
+
+    res.status(500).json({
+      message: "Could not fetch movie details",
+    });
+  }
+});
+
+// MOVIE TRAILERS
+router.get("/movie/:id/videos", async (req, res) => {
+  try {
+    const data = await fetchTMDB(
+      `/movie/${encodeURIComponent(req.params.id)}/videos`
+    );
+
+    res.json(data.results);
+  } catch (error) {
+    console.error("Movie trailers error:", error.message);
+
+    res.status(500).json({
+      message: "Could not fetch movie trailers",
+    });
+  }
+});
+
+// FULL MOVIE DETAILS
+router.get("/movie/:id", async (req, res) => {
+  try {
+    const data = await fetchTMDB(
+      `/movie/${encodeURIComponent(req.params.id)}`
+    );
+
+    res.json(data);
+  } catch (error) {
+    console.error("Movie details error:", error.message);
+
+    res.status(500).json({
+      message: "Could not fetch movie details",
+    });
+  }
+});
+
+// MOVIE TRAILERS
+router.get("/movie/:id/videos", async (req, res) => {
+  try {
+    const data = await fetchTMDB(
+      `/movie/${encodeURIComponent(req.params.id)}/videos`
+    );
+
+    res.json(data.results);
+  } catch (error) {
+    console.error("Movie trailers error:", error.message);
+
+    res.status(500).json({
+      message: "Could not fetch movie trailers",
+    });
+  }
+});
+
 module.exports = router;
