@@ -3,14 +3,14 @@ import { useParams, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useWatchlist } from "../context/WatchlistContext";
 
+const TMDB_BASE_URL =
+  "https://moviehub-1ke6.onrender.com/api/tmdb";
+
+const MOVIE_API_URL =
+  "https://moviehub-1ke6.onrender.com/api/movies";
+
 function MovieDetails() {
   const { id } = useParams();
-
-  const [movie, setMovie] = useState(null);
-  const [trailerKey, setTrailerKey] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [showTrailer, setShowTrailer] = useState(false);
 
   const {
     addToWatchlist,
@@ -18,205 +18,269 @@ function MovieDetails() {
     isInWatchlist,
   } = useWatchlist();
 
+  const [movie, setMovie] = useState(null);
+  const [trailer, setTrailer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   useEffect(() => {
-    const fetchMovieDetails = async () => {
+    const loadMovie = async () => {
+      setLoading(true);
+      setError("");
+      setMovie(null);
+      setTrailer(null);
+
       try {
-        setLoading(true);
-        setError("");
+        // MongoDB ObjectId = 24 hexadecimal characters
+        const isMongoId = /^[a-f\d]{24}$/i.test(id);
 
-        const BASE_URL =
-          "https://moviehub-1ke6.onrender.com/api/tmdb";
+        if (isMongoId) {
+          // OLD MONGODB MOVIE
+          const response = await fetch(
+            `${MOVIE_API_URL}/${id}`
+          );
 
-        const [movieResponse, trailerResponse] =
-          await Promise.all([
-            fetch(`${BASE_URL}/movie/${id}`),
-            fetch(`${BASE_URL}/movie/${id}/videos`),
-          ]);
+          if (!response.ok) {
+            throw new Error("Movie not found");
+          }
+
+          const data = await response.json();
+
+          setMovie({
+            ...data,
+            id: data._id,
+          });
+
+          return;
+        }
+
+        // TMDB MOVIE
+        const movieResponse = await fetch(
+          `${TMDB_BASE_URL}/movie/${id}`
+        );
 
         if (!movieResponse.ok) {
-          throw new Error("Failed to load movie details");
+          throw new Error("Movie not found");
         }
 
         const movieData = await movieResponse.json();
 
         setMovie(movieData);
 
-        if (trailerResponse.ok) {
-          const videos = await trailerResponse.json();
+        // Load trailer
+        try {
+          const videoResponse = await fetch(
+            `${TMDB_BASE_URL}/movie/${id}/videos`
+          );
 
-          const trailer =
-            videos.find(
-              (video) =>
-                video.site === "YouTube" &&
-                video.type === "Trailer" &&
-                video.official
-            ) ||
-            videos.find(
-              (video) =>
-                video.site === "YouTube" &&
-                video.type === "Trailer"
-            ) ||
-            videos.find(
-              (video) => video.site === "YouTube"
-            );
+          if (videoResponse.ok) {
+            const videoData =
+              await videoResponse.json();
 
-          setTrailerKey(trailer?.key || "");
+            const trailerVideo =
+              videoData.results?.find(
+                (video) =>
+                  video.site === "YouTube" &&
+                  video.type === "Trailer"
+              );
+
+            setTrailer(trailerVideo || null);
+          }
+        } catch (videoError) {
+          console.error(
+            "Trailer error:",
+            videoError.message
+          );
         }
-      } catch (error) {
-        console.error("Movie details error:", error);
-        setError("Unable to load this movie.");
+      } catch (err) {
+        console.error(
+          "Movie details error:",
+          err.message
+        );
+
+        setError("Movie could not be loaded.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchMovieDetails();
+    loadMovie();
   }, [id]);
 
   if (loading) {
     return (
-      <div className="details-page">
+      <>
         <Navbar />
-        <div className="not-found">
-          <h1>Loading Movie...</h1>
-        </div>
-      </div>
+
+        <main className="movie-details">
+          <div className="movie-details-container">
+            <div className="loading">
+              Loading movie...
+            </div>
+          </div>
+        </main>
+      </>
     );
   }
 
   if (error || !movie) {
     return (
-      <div className="details-page">
+      <>
         <Navbar />
-        <div className="not-found">
-          <h1>Movie Not Found</h1>
-          <p>{error}</p>
-          <Link to="/movies">Back to Movies</Link>
-        </div>
-      </div>
+
+        <main className="movie-details">
+          <div className="movie-details-container">
+            <div className="error-message">
+              <h2>Movie not found</h2>
+
+              <Link to="/movies">
+                Back to Movies
+              </Link>
+            </div>
+          </div>
+        </main>
+      </>
     );
   }
 
-  const imageUrl = movie.poster_path
-    ? `https://image.tmdb.org/t/p/w780${movie.poster_path}`
-    : "";
+  const movieId = movie.id || movie._id;
 
-  const saved = isInWatchlist(movie.id);
+  const posterUrl = movie.poster_path
+    ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+    : "https://via.placeholder.com/500x750?text=No+Poster";
 
-  const handleWatchlist = () => {
+  const backdropUrl = movie.backdrop_path
+    ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}`
+    : posterUrl;
+
+  const saved = isInWatchlist(movieId);
+
+  const handleWatchlist = async () => {
     if (saved) {
-      removeFromWatchlist(movie.id);
+      await removeFromWatchlist(movieId);
     } else {
-      addToWatchlist({
-        id: movie.id,
+      await addToWatchlist({
+        id: movieId,
         title: movie.title,
-        poster_path: movie.poster_path,
-        vote_average: movie.vote_average,
-        release_date: movie.release_date,
-        overview: movie.overview,
-        description: movie.overview,
+        poster_path: movie.poster_path || "",
+        vote_average: movie.vote_average || 0,
+        release_date: movie.release_date || "",
+        description:
+          movie.description ||
+          movie.overview ||
+          "",
+        overview:
+          movie.overview ||
+          movie.description ||
+          "",
       });
     }
   };
 
   return (
-    <div className="details-page">
+    <div className="movie-details-page">
       <Navbar />
 
-      <main className="details-container">
-        <div className="details-poster">
-          {imageUrl && (
-            <img src={imageUrl} alt={movie.title} />
-          )}
-        </div>
+      <div
+        className="movie-backdrop"
+        style={{
+          backgroundImage: `linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0.25),
+            rgba(0, 0, 0, 0.95)
+          ), url(${backdropUrl})`,
+        }}
+      />
 
-        <div className="details-info">
-          <p className="section-label">MOVIE DETAILS</p>
+      <main className="movie-details">
+        <div className="movie-details-container">
 
-          <h1>{movie.title}</h1>
+          <div className="movie-details-card">
 
-          <div className="details-meta">
-            <span>
-              ⭐ {movie.vote_average?.toFixed(1)}
-            </span>
-
-            <span>
-              {movie.release_date?.slice(0, 4)}
-            </span>
-
-            {movie.runtime > 0 && (
-              <span>{movie.runtime} min</span>
-            )}
-          </div>
-
-          {movie.genres?.length > 0 && (
-            <div className="details-meta">
-              {movie.genres.map((genre) => (
-                <span key={genre.id}>
-                  {genre.name}
-                </span>
-              ))}
+            <div className="movie-poster-section">
+              <img
+                src={posterUrl}
+                alt={movie.title}
+                className="movie-details-poster"
+              />
             </div>
-          )}
 
-          <p className="details-description">
-            {movie.overview || "No description available."}
-          </p>
+            <div className="movie-details-info">
 
-          <div className="details-actions">
-            <button
-              className="primary-btn"
-              onClick={() => setShowTrailer(true)}
-            >
-              ▶ Watch Trailer
-            </button>
+              <p className="section-label">
+                MOVIE DETAILS
+              </p>
 
-            <button
-              className="secondary-btn"
-              onClick={handleWatchlist}
-            >
-              {saved
-                ? "✓ Remove from Watchlist"
-                : "+ Add to Watchlist"}
-            </button>
+              <h1>{movie.title}</h1>
+
+              <div className="movie-details-meta">
+                <span>
+                  ⭐{" "}
+                  {movie.vote_average
+                    ? movie.vote_average.toFixed(1)
+                    : "N/A"}
+                </span>
+
+                <span>
+                  {movie.release_date?.slice(0, 4)}
+                </span>
+
+                {movie.genre && (
+                  <span>{movie.genre}</span>
+                )}
+              </div>
+
+              <p className="movie-description">
+                {movie.overview ||
+                  movie.description ||
+                  "No description available."}
+              </p>
+
+              <div className="movie-actions">
+
+                <button
+                  className="primary-btn"
+                  onClick={handleWatchlist}
+                >
+                  {saved
+                    ? "✓ Remove from Watchlist"
+                    : "+ Add to Watchlist"}
+                </button>
+
+                <Link
+                  to="/movies"
+                  className="secondary-btn"
+                >
+                  Back to Movies
+                </Link>
+
+              </div>
+
+            </div>
           </div>
 
-          <Link to="/movies" className="back-link">
-            ← Back to Movies
-          </Link>
+          {trailer && (
+            <section className="trailer-section">
+
+              <p className="section-label">
+                OFFICIAL TRAILER
+              </p>
+
+              <h2>Watch Trailer</h2>
+
+              <div className="trailer-wrapper">
+                <iframe
+                  src={`https://www.youtube.com/embed/${trailer.key}`}
+                  title={`${movie.title} trailer`}
+                  allowFullScreen
+                />
+              </div>
+
+            </section>
+          )}
+
         </div>
       </main>
-
-      {showTrailer && (
-        <div
-          className="trailer-modal"
-          onClick={() => setShowTrailer(false)}
-        >
-          <div
-            className="trailer-content"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="trailer-close"
-              onClick={() => setShowTrailer(false)}
-              aria-label="Close trailer"
-            >
-              ✕
-            </button>
-
-            {trailerKey ? (
-              <iframe
-                src={`https://www.youtube-nocookie.com/embed/${trailerKey}?autoplay=1`}
-                title={`${movie.title} trailer`}
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen
-              />
-            ) : (
-              <p>Trailer unavailable for this movie.</p>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

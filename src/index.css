@@ -19,3 +19,9 @@ input {
   min-height: 100vh;
   padding: 40px;
 }
+
+@media (max-width: 600px) {
+  .app {
+    padding: 0 16px;
+  }
+}
