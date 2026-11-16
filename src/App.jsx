@@ -1,9 +1,11 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 
 import "./App.css";
 import MovieCard from "./components/MovieCard";
 import Navbar from "./components/Navbar";
+import { getPopularMovies } from "./services/tmdb";
 
 function App() {
   const carouselRef = useRef(null);
@@ -14,29 +16,15 @@ function App() {
 
   const [featuredIndex, setFeaturedIndex] = useState(0);
 
-  // LOAD MOVIES FROM BACKEND
+  // LOAD POPULAR MOVIES FROM TMDB THROUGH OUR BACKEND
   useEffect(() => {
     const fetchMovies = async () => {
       try {
-        const response = await fetch(
-          "https://moviehub-1ke6.onrender.com/api/movies"
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message || "Failed to load movies"
-          );
-        }
+        const data = await getPopularMovies();
 
         setMovies(data);
       } catch (error) {
-        console.error(
-          "Fetch movies error:",
-          error.message
-        );
-
+        console.error("Fetch movies error:", error.message);
         setError("Unable to load movies.");
       } finally {
         setLoading(false);
@@ -48,9 +36,7 @@ function App() {
 
   // FEATURED MOVIE AUTO-SLIDER
   useEffect(() => {
-    if (movies.length === 0) {
-      return;
-    }
+    if (movies.length === 0) return;
 
     const timer = setInterval(() => {
       setFeaturedIndex(
@@ -71,14 +57,11 @@ function App() {
   };
 
   const changeFeatured = (direction) => {
-    if (movies.length === 0) {
-      return;
-    }
+    if (movies.length === 0) return;
 
     setFeaturedIndex(
       (current) =>
-        (current + direction + movies.length) %
-        movies.length
+        (current + direction + movies.length) % movies.length
     );
   };
 
@@ -89,32 +72,25 @@ function App() {
       <Navbar />
 
       <main>
-
         {/* HERO */}
         {!loading && !error && featuredMovie && (
           <section
             className="hero featured-hero"
-            key={featuredMovie._id}
+            key={featuredMovie.id}
           >
             <div
               className="featured-backdrop"
               style={{
-                backgroundImage: `url(https://image.tmdb.org/t/p/original${featuredMovie.poster_path})`,
+                backgroundImage: `url(https://image.tmdb.org/t/p/original${featuredMovie.backdrop_path || featuredMovie.poster_path})`,
               }}
             />
 
             <div className="hero-content">
+              <p className="hero-label">FEATURED MOVIE</p>
 
-              <p className="hero-label">
-                FEATURED MOVIE
-              </p>
-
-              <h1>
-                {featuredMovie.title}
-              </h1>
+              <h1>{featuredMovie.title}</h1>
 
               <div className="featured-meta">
-
                 <span>
                   ⭐ {featuredMovie.vote_average?.toFixed(1)}
                 </span>
@@ -124,17 +100,15 @@ function App() {
                 </span>
 
                 <span>HD</span>
-
               </div>
 
               <p className="hero-text">
-                {featuredMovie.description}
+                {featuredMovie.overview}
               </p>
 
               <div className="hero-buttons">
-
                 <Link
-                  to={`/movie/${featuredMovie._id}`}
+                  to={`/movie/${featuredMovie.id}`}
                   className="primary-btn"
                 >
                   View Details
@@ -146,50 +120,36 @@ function App() {
                 >
                   Explore Movies
                 </Link>
-
               </div>
 
               <div className="featured-controls">
-
                 <button
-                  onClick={() =>
-                    changeFeatured(-1)
-                  }
+                  onClick={() => changeFeatured(-1)}
                   aria-label="Previous featured movie"
                 >
                   &#8592;
                 </button>
 
                 <div className="featured-dots">
-
                   {movies.map((movie, index) => (
                     <button
-                      key={movie._id}
+                      key={movie.id}
                       className={
-                        featuredIndex === index
-                          ? "active"
-                          : ""
+                        featuredIndex === index ? "active" : ""
                       }
-                      onClick={() =>
-                        setFeaturedIndex(index)
-                      }
+                      onClick={() => setFeaturedIndex(index)}
                       aria-label={`Show ${movie.title}`}
                     />
                   ))}
-
                 </div>
 
                 <button
-                  onClick={() =>
-                    changeFeatured(1)
-                  }
+                  onClick={() => changeFeatured(1)}
                   aria-label="Next featured movie"
                 >
                   &#8594;
                 </button>
-
               </div>
-
             </div>
           </section>
         )}
@@ -211,35 +171,21 @@ function App() {
         {/* POPULAR MOVIES */}
         {!loading && !error && (
           <section className="movies-section">
-
             <div className="section-header">
-
               <div>
-                <p className="section-label">
-                  EXPLORE
-                </p>
-
-                <h2>
-                  Popular Movies
-                </h2>
+                <p className="section-label">EXPLORE</p>
+                <h2>Popular Movies</h2>
               </div>
 
               <div className="carousel-controls">
-
-                <button
-                  onClick={() => slide(-1)}
-                >
+                <button onClick={() => slide(-1)}>
                   &#8592;
                 </button>
 
-                <button
-                  onClick={() => slide(1)}
-                >
+                <button onClick={() => slide(1)}>
                   &#8594;
                 </button>
-
               </div>
-
             </div>
 
             <div
@@ -249,16 +195,14 @@ function App() {
               {movies.map((movie) => (
                 <div
                   className="carousel-card"
-                  key={movie._id}
+                  key={movie.id}
                 >
                   <MovieCard movie={movie} />
                 </div>
               ))}
             </div>
-
           </section>
         )}
-
       </main>
     </div>
   );

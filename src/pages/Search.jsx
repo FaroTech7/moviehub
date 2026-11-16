@@ -1,91 +1,84 @@
+
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import MovieCard from "../components/MovieCard";
 
+const BASE_URL = "https://moviehub-1ke6.onrender.com/api/tmdb";
+
 function Search() {
   const [search, setSearch] = useState("");
   const [movies, setMovies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // LOAD MOVIES FROM BACKEND
   useEffect(() => {
-    const fetchMovies = async () => {
+    const query = search.trim();
+
+    if (!query) {
+      setMovies([]);
+      setLoading(false);
+      setError("");
+      return;
+    }
+
+    const timer = setTimeout(async () => {
       try {
+        setLoading(true);
+        setError("");
+
         const response = await fetch(
-          "https://moviehub-1ke6.onrender.com/api/movies"
+          `${BASE_URL}/search?query=${encodeURIComponent(query)}`
         );
 
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(
-            data.message || "Failed to load movies"
-          );
+          throw new Error("Search failed");
         }
 
         setMovies(data);
       } catch (error) {
-        console.error(
-          "Fetch movies error:",
-          error.message
-        );
-
-        setError("Unable to load movies.");
+        console.error("Search error:", error.message);
+        setError("Unable to search movies.");
       } finally {
         setLoading(false);
       }
-    };
+    }, 400);
 
-    fetchMovies();
-  }, []);
-
-  const filteredMovies = movies.filter((movie) =>
-    movie.title
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
+    return () => clearTimeout(timer);
+  }, [search]);
 
   return (
     <div className="search-page">
       <Navbar />
 
       <main className="search-content">
-
         <div className="search-header">
-
           <p className="section-label">
             SEARCH MOVIEHUB
           </p>
 
-          <h1>
-            Find Your Next Movie
-          </h1>
+          <h1>Find Your Next Movie</h1>
 
           <p>
-            Search through our movie collection.
+            Search millions of movies from around the world.
           </p>
-
         </div>
 
         <div className="search-box">
-
           <span>🔍</span>
 
           <input
             type="text"
             placeholder="Search movies..."
             value={search}
-            onChange={(e) =>
-              setSearch(e.target.value)
-            }
+            onChange={(e) => setSearch(e.target.value)}
           />
-
         </div>
 
         {loading && (
           <div className="movies-status">
-            Loading movies...
+            Searching movies...
           </div>
         )}
 
@@ -95,45 +88,37 @@ function Search() {
           </div>
         )}
 
-        {!loading && !error && search && (
+        {!loading && !error && search.trim() && (
           <p className="search-results">
-            {filteredMovies.length} movie
-            {filteredMovies.length !== 1
-              ? "s"
-              : ""}{" "}
-            found
+            {movies.length} movie
+            {movies.length !== 1 ? "s" : ""} found
           </p>
         )}
 
-        {!loading &&
-          !error &&
-          filteredMovies.length > 0 && (
-            <div className="movie-grid">
-              {filteredMovies.map((movie) => (
-                <MovieCard
-                  key={movie._id}
-                  movie={movie}
-                />
-              ))}
-            </div>
-          )}
+        {!loading && !error && movies.length > 0 && (
+          <div className="movie-grid">
+            {movies.map((movie) => (
+              <MovieCard
+                key={movie.id}
+                movie={movie}
+              />
+            ))}
+          </div>
+        )}
 
-        {!loading &&
-          !error &&
-          filteredMovies.length === 0 && (
-            <div className="no-results">
+        {!loading && !error && search.trim() && movies.length === 0 && (
+          <div className="no-results">
+            <h2>No movies found</h2>
+            <p>Try searching for another movie.</p>
+          </div>
+        )}
 
-              <h2>
-                No movies found
-              </h2>
-
-              <p>
-                Try searching for another movie.
-              </p>
-
-            </div>
-          )}
-
+        {!search.trim() && (
+          <div className="no-results">
+            <h2>What are you looking for?</h2>
+            <p>Enter a movie title to get started.</p>
+          </div>
+        )}
       </main>
     </div>
   );

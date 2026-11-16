@@ -1,157 +1,123 @@
+
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import MovieCard from "../components/MovieCard";
 
 const genres = [
-  "All",
-  "Action",
-  "Adventure",
-  "Drama",
-  "Sci-Fi",
-  "Thriller",
-  "Crime",
-  "Fantasy",
-  "History",
+  { name: "All", id: null },
+  { name: "Action", id: 28 },
+  { name: "Adventure", id: 12 },
+  { name: "Drama", id: 18 },
+  { name: "Sci-Fi", id: 878 },
+  { name: "Thriller", id: 53 },
+  { name: "Crime", id: 80 },
+  { name: "Fantasy", id: 14 },
+  { name: "History", id: 36 },
 ];
+
+const BASE_URL = "https://moviehub-1ke6.onrender.com/api/tmdb";
 
 function Genres() {
   const [movies, setMovies] = useState([]);
-  const [selectedGenre, setSelectedGenre] = useState("All");
+  const [selectedGenre, setSelectedGenre] = useState(genres[0]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // LOAD MOVIES FROM BACKEND
   useEffect(() => {
     const fetchMovies = async () => {
       try {
-        const response = await fetch(
-          "https://moviehub-1ke6.onrender.com/api/movies"
-        );
+        setLoading(true);
+        setError("");
 
-        const data = await response.json();
+        const endpoint = selectedGenre.id === null
+          ? `${BASE_URL}/popular`
+          : `${BASE_URL}/genre/${selectedGenre.id}`;
+
+        const response = await fetch(endpoint);
 
         if (!response.ok) {
-          throw new Error(
-            data.message || "Failed to load movies"
-          );
+          throw new Error("Failed to load genre movies");
         }
 
+        const data = await response.json();
         setMovies(data);
       } catch (error) {
-        console.error(
-          "Fetch movies error:",
-          error.message
-        );
-
+        console.error("Genre error:", error.message);
         setError("Unable to load movies.");
+        setMovies([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchMovies();
-  }, []);
-
-  // FILTER MOVIES BY GENRE
-  const filteredMovies =
-    selectedGenre === "All"
-      ? movies
-      : movies.filter(
-          (movie) => movie.genre === selectedGenre
-        );
+  }, [selectedGenre]);
 
   return (
     <div className="genres-page">
       <Navbar />
 
       <main className="genres-content">
-
         <div className="page-header">
-
-          <p className="section-label">
-            EXPLORE BY GENRE
-          </p>
+          <p className="section-label">EXPLORE BY GENRE</p>
 
           <h1>Movie Genres</h1>
 
           <p>
             Find movies based on the kind of story you want to watch.
           </p>
-
         </div>
 
-        {/* GENRE BUTTONS */}
         <div className="genre-list">
-
           {genres.map((genre) => (
             <button
-              key={genre}
+              key={genre.name}
               className={
-                selectedGenre === genre
+                selectedGenre.name === genre.name
                   ? "genre-btn active"
                   : "genre-btn"
               }
-              onClick={() =>
-                setSelectedGenre(genre)
-              }
+              onClick={() => setSelectedGenre(genre)}
             >
-              {genre}
+              {genre.name}
             </button>
           ))}
-
         </div>
 
-        {/* LOADING */}
         {loading && (
           <div className="movies-status">
             Loading movies...
           </div>
         )}
 
-        {/* ERROR */}
         {error && (
           <div className="movies-status movies-error">
             {error}
           </div>
         )}
 
-        {/* RESULTS */}
         {!loading && !error && (
           <div className="genre-results">
+            <h2>{selectedGenre.name} Movies</h2>
 
-            <h2>
-              {selectedGenre} Movies
-            </h2>
-
-            {filteredMovies.length > 0 ? (
+            {movies.length > 0 ? (
               <div className="movie-grid">
-
-                {filteredMovies.map((movie) => (
+                {movies.map((movie) => (
                   <MovieCard
-                    key={movie._id}
+                    key={movie.id}
                     movie={movie}
                   />
                 ))}
-
               </div>
             ) : (
               <div className="no-results">
-
-                <h2>
-                  No movies found
-                </h2>
-
-                <p>
-                  There are no movies in this genre yet.
-                </p>
-
+                <h2>No movies found</h2>
+                <p>Try selecting another genre.</p>
               </div>
             )}
-
           </div>
         )}
-
       </main>
     </div>
   );

@@ -1,5 +1,7 @@
+
 import { useEffect, useState } from "react";
 import MovieCard from "../components/MovieCard";
+import { getPopularMovies } from "../services/tmdb";
 
 function Movies() {
   const [movies, setMovies] = useState([]);
@@ -9,18 +11,7 @@ function Movies() {
   useEffect(() => {
     const fetchMovies = async () => {
       try {
-        const response = await fetch(
-          "https://moviehub-1ke6.onrender.com/api/movies"
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message || "Failed to load movies"
-          );
-        }
-
+        const data = await getPopularMovies();
         setMovies(data);
       } catch (error) {
         console.error("Fetch movies error:", error.message);
@@ -41,7 +32,7 @@ function Movies() {
         <h1>All Movies</h1>
 
         <p>
-          Explore our collection of popular movies.
+          Explore popular movies from around the world.
         </p>
       </div>
 
@@ -61,7 +52,7 @@ function Movies() {
         <div className="movie-grid">
           {movies.map((movie) => (
             <MovieCard
-              key={movie._id}
+              key={movie.id}
               movie={movie}
             />
           ))}

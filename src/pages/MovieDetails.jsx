@@ -7,6 +7,7 @@ function MovieDetails() {
   const { id } = useParams();
 
   const [movie, setMovie] = useState(null);
+  const [trailerKey, setTrailerKey] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showTrailer, setShowTrailer] = useState(false);
@@ -18,41 +19,64 @@ function MovieDetails() {
   } = useWatchlist();
 
   useEffect(() => {
-    const fetchMovie = async () => {
+    const fetchMovieDetails = async () => {
       try {
-        const response = await fetch(
-          `https://moviehub-1ke6.onrender.com/api/movies/${id}`
-        );
+        setLoading(true);
+        setError("");
 
-        const data = await response.json();
+        const BASE_URL =
+          "https://moviehub-1ke6.onrender.com/api/tmdb";
 
-        if (!response.ok) {
-          throw new Error(
-            data.message || "Failed to load movie"
-          );
+        const [movieResponse, trailerResponse] =
+          await Promise.all([
+            fetch(`${BASE_URL}/movie/${id}`),
+            fetch(`${BASE_URL}/movie/${id}/videos`),
+          ]);
+
+        if (!movieResponse.ok) {
+          throw new Error("Failed to load movie details");
         }
 
-        setMovie(data);
-      } catch (error) {
-        console.error(
-          "Fetch movie error:",
-          error.message
-        );
+        const movieData = await movieResponse.json();
 
+        setMovie(movieData);
+
+        if (trailerResponse.ok) {
+          const videos = await trailerResponse.json();
+
+          const trailer =
+            videos.find(
+              (video) =>
+                video.site === "YouTube" &&
+                video.type === "Trailer" &&
+                video.official
+            ) ||
+            videos.find(
+              (video) =>
+                video.site === "YouTube" &&
+                video.type === "Trailer"
+            ) ||
+            videos.find(
+              (video) => video.site === "YouTube"
+            );
+
+          setTrailerKey(trailer?.key || "");
+        }
+      } catch (error) {
+        console.error("Movie details error:", error);
         setError("Unable to load this movie.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchMovie();
+    fetchMovieDetails();
   }, [id]);
 
   if (loading) {
     return (
       <div className="details-page">
         <Navbar />
-
         <div className="not-found">
           <h1>Loading Movie...</h1>
         </div>
@@ -64,39 +88,33 @@ function MovieDetails() {
     return (
       <div className="details-page">
         <Navbar />
-
         <div className="not-found">
           <h1>Movie Not Found</h1>
-
           <p>{error}</p>
-
-          <Link to="/movies">
-            Back to Movies
-          </Link>
+          <Link to="/movies">Back to Movies</Link>
         </div>
       </div>
     );
   }
 
-  const imageUrl =
-    `https://image.tmdb.org/t/p/w780${movie.poster_path}`;
+  const imageUrl = movie.poster_path
+    ? `https://image.tmdb.org/t/p/w780${movie.poster_path}`
+    : "";
 
-  // MongoDB movie ID
-  const movieId = movie._id;
-
-  const saved = isInWatchlist(movieId);
+  const saved = isInWatchlist(movie.id);
 
   const handleWatchlist = () => {
     if (saved) {
-      removeFromWatchlist(movieId);
+      removeFromWatchlist(movie.id);
     } else {
       addToWatchlist({
-        id: movieId,
+        id: movie.id,
         title: movie.title,
         poster_path: movie.poster_path,
         vote_average: movie.vote_average,
         release_date: movie.release_date,
-        description: movie.description,
+        overview: movie.overview,
+        description: movie.overview,
       });
     }
   };
@@ -106,24 +124,18 @@ function MovieDetails() {
       <Navbar />
 
       <main className="details-container">
-
         <div className="details-poster">
-          <img
-            src={imageUrl}
-            alt={movie.title}
-          />
+          {imageUrl && (
+            <img src={imageUrl} alt={movie.title} />
+          )}
         </div>
 
         <div className="details-info">
-
-          <p className="section-label">
-            MOVIE DETAILS
-          </p>
+          <p className="section-label">MOVIE DETAILS</p>
 
           <h1>{movie.title}</h1>
 
           <div className="details-meta">
-
             <span>
               ⭐ {movie.vote_average?.toFixed(1)}
             </span>
@@ -132,21 +144,29 @@ function MovieDetails() {
               {movie.release_date?.slice(0, 4)}
             </span>
 
-            <span>HD</span>
-
+            {movie.runtime > 0 && (
+              <span>{movie.runtime} min</span>
+            )}
           </div>
 
+          {movie.genres?.length > 0 && (
+            <div className="details-meta">
+              {movie.genres.map((genre) => (
+                <span key={genre.id}>
+                  {genre.name}
+                </span>
+              ))}
+            </div>
+          )}
+
           <p className="details-description">
-            {movie.description}
+            {movie.overview || "No description available."}
           </p>
 
           <div className="details-actions">
-
             <button
               className="primary-btn"
-              onClick={() =>
-                setShowTrailer(true)
-              }
+              onClick={() => setShowTrailer(true)}
             >
               ▶ Watch Trailer
             </button>
@@ -159,62 +179,44 @@ function MovieDetails() {
                 ? "✓ Remove from Watchlist"
                 : "+ Add to Watchlist"}
             </button>
-
           </div>
 
-          <Link
-            to="/movies"
-            className="back-link"
-          >
+          <Link to="/movies" className="back-link">
             ← Back to Movies
           </Link>
-
         </div>
-
       </main>
 
-      {/* TRAILER MODAL */}
       {showTrailer && (
         <div
           className="trailer-modal"
-          onClick={() =>
-            setShowTrailer(false)
-          }
+          onClick={() => setShowTrailer(false)}
         >
           <div
             className="trailer-content"
-            onClick={(e) =>
-              e.stopPropagation()
-            }
+            onClick={(e) => e.stopPropagation()}
           >
-
             <button
               className="trailer-close"
-              onClick={() =>
-                setShowTrailer(false)
-              }
+              onClick={() => setShowTrailer(false)}
               aria-label="Close trailer"
             >
               ✕
             </button>
 
-            <iframe
-              src={
-                movie.trailer_url
-                  ? `https://www.youtube-nocookie.com/embed/${
-                      movie.trailer_url.split("v=")[1]
-                    }?autoplay=1`
-                  : ""
-              }
-              title={`${movie.title} trailer`}
-              allow="autoplay; encrypted-media; picture-in-picture"
-              allowFullScreen
-            />
-
+            {trailerKey ? (
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${trailerKey}?autoplay=1`}
+                title={`${movie.title} trailer`}
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+              />
+            ) : (
+              <p>Trailer unavailable for this movie.</p>
+            )}
           </div>
         </div>
       )}
-
     </div>
   );
 }
